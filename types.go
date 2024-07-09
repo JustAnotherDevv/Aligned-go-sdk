@@ -129,7 +129,7 @@ func NewClientMessage(verificationData VerificationData, privateKey *ecdsa.Priva
 
 	r, s, v, err := ConvertSignature(signature)
 	if err != nil {
-		return nil, err // Return nil pointer and error
+		return nil, err
 	}
 
 	vInt := int(v[0])
@@ -153,6 +153,10 @@ func NewClientMessage(verificationData VerificationData, privateKey *ecdsa.Priva
 		VerificationData: verificationData,
 		Signature:        sig,
 	}, nil
+}
+
+func TransformMessage(msg ClientMessage) string {
+	return fmt.Sprintf(`{"verification_data":{"proving_system":"%s","proof":%x,"pub_input":%x,"verification_key":%x,"vm_program_code":null,"proof_generator_addr":"0x66f9664f97F2b50F62D13eA064982f936dE76657"},"signature":{"r":"%s","s":"%s","v":%d}}`, msg.VerificationData.ProvingSystem.String(), msg.VerificationData.Proof, msg.VerificationData.PublicInput, msg.VerificationData.VerificationKey, msg.Signature.R, msg.Signature.S, msg.Signature.V)
 }
 
 // func createSignature(r byte, s byte, v byte) Signature {
