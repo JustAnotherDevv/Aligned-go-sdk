@@ -1,4 +1,4 @@
-package aligned_test
+package alignedSdk_test
 
 import (
 	"crypto/ecdsa"
@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
-	"aligned"
+	"alignedSdk"
 
 	"github.com/joho/godotenv"
 )
@@ -55,8 +55,8 @@ func TestSubmitMultipleGroth16(t *testing.T) {
 	client, err := getRpcClient()
 	assert.NoError(t, err)
 
-	groth16Data := aligned.VerificationData{
-		ProvingSystem:         aligned.Groth16Bn254,
+	groth16Data := alignedSdk.VerificationData{
+		ProvingSystem:         alignedSdk.Groth16Bn254,
 		Proof:                 proof,
 		PublicInput:           pub,
 		VerificationKey:       vk,
@@ -64,5 +64,8 @@ func TestSubmitMultipleGroth16(t *testing.T) {
 		ProofGeneratorAddress: proofGeneratorAddress,
 	}
 
-	println("test ")
+	alignment := alignedSdk.NewAligned("", client)
+	alignedSdkData, err := alignment.SubmitMultiple([]alignedSdk.VerificationData{groth16Data, groth16Data}, privateKey)
+	assert.NoError(t, err)
+	println(alignedSdkData)
 }

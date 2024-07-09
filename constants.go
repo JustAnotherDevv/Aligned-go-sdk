@@ -1,4 +1,4 @@
-package aligned
+package alignedSdk
 
 const (
 	DefaultAddress  = "wss://batcher.alignedlayer.com"

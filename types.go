@@ -1,13 +1,16 @@
-package aligned
+package alignedSdk
 
 import (
+	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"golang.org/x/crypto/sha3"
 )
 
-// remove comment in prod
 // type ProtocolVersion int
 
 type Option[T any] struct {
@@ -74,16 +77,6 @@ type VerificationDataCommitment struct {
 	ProofGeneratorAddr             []byte
 }
 
-type InclusionProof struct {
-	MerklePath [][]byte
-}
-
-type BatchInclusionData struct {
-	BatchMerkleRoot     []byte
-	BatchInclusionProof []InclusionProof
-	IndexInBatch        int
-}
-
 func (data *VerificationData) ToCommitment() *VerificationDataCommitment {
 	hash := sha3.NewLegacyKeccak256()
 
@@ -124,4 +117,98 @@ type Signature struct {
 type ClientMessage struct {
 	VerificationData VerificationData `json:"verification_data"`
 	Signature        Signature
+}
+
+func NewClientMessage(verificationData VerificationData, privateKey *ecdsa.PrivateKey) (*ClientMessage, error) {
+	commitment := verificationData.ToCommitment()
+	commitmentBatch := hashCommitment(commitment)
+	signature, err := crypto.Sign(commitmentBatch, privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	r, s, v, err := ConvertSignature(signature)
+	if err != nil {
+		return nil, err // Return nil pointer and error
+	}
+
+	vInt := int(v[0])
+
+	sig := Signature{
+		V: vInt,
+		R: "0x" + hex.EncodeToString(r),
+		S: "0x" + hex.EncodeToString(s),
+	}
+
+	obj := ClientMessage{
+		VerificationData: verificationData,
+		Signature:        sig,
+	}
+
+	d, _ := json.Marshal(obj)
+
+	fmt.Println(string(d))
+
+	return &ClientMessage{
+		VerificationData: verificationData,
+		Signature:        sig,
+	}, nil
+}
+
+// func createSignature(r byte, s byte, v byte) Signature {
+// 	return Signature{r: r, s: s, v: v}
+// }
+
+func ConvertSignature(sig []byte) (r, s, v []byte, err error) {
+	if len(sig) != 65 {
+		return nil, nil, nil, errors.New("wrong length")
+	}
+
+	r = sig[:32]
+	// s = sig[32:64]
+	// v = sig[64:]
+	s = sig[32:64]
+	v = sig[64:]
+	return r, s, v, nil
+}
+
+func hashCommitment(data *VerificationDataCommitment) []byte {
+	hash := sha3.NewLegacyKeccak256()
+
+	hash.Write(data.ProofCommitment)
+	hash.Write(data.PublicInputCommitment)
+	hash.Write(data.ProvingSystemAuxDataCommitment)
+	hash.Write(data.ProofGeneratorAddr)
+
+	return hash.Sum(nil)
+}
+
+type AlignedVerificationData struct {
+	VerificationDataCommitment *VerificationDataCommitment
+	BatchMerkleRoot            []byte
+	BatchInclusionProof        []InclusionProof
+	IndexInBatch               int
+}
+
+func NewAlignedVerificationData(commitment *VerificationDataCommitment, data BatchInclusionData) *AlignedVerificationData {
+	return &AlignedVerificationData{
+		VerificationDataCommitment: commitment,
+		BatchMerkleRoot:            data.BatchMerkleRoot,
+		BatchInclusionProof:        data.BatchInclusionProof,
+		IndexInBatch:               data.IndexInBatch,
+	}
+}
+
+type InclusionProof struct {
+	MerklePath [][]byte
+}
+
+type BatchInclusionData struct {
+	BatchMerkleRoot     []byte
+	BatchInclusionProof []InclusionProof
+	IndexInBatch        int
+}
+
+func (data *BatchInclusionData) FromBuffer(buffer []byte) error {
+	return json.Unmarshal(buffer, data)
 }

@@ -1,3 +1,4 @@
 index.go
-main.go
 .env
+index.txt
+aligned.go
